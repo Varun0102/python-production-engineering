@@ -17,7 +17,7 @@ AI writes code fast. Production engineering decides whether it ships.
 | 02-architecture | The full architecture of what we build and the deployment flow |
 | 03-diagrams | The draw.io file used in class. Open it at https://app.diagrams.net |
 | 04-code | The Complaint Triage Service, the AI stub service and the Kubernetes files |
-| 05-labs | The hands on lab, step by step, from an empty AWS account to EKS |
+| 05-labs | The hands on lab, step by step: VPC, EC2 workstation, EKS cluster, then the service |
 | 06-interview-questions | Interview questions you can answer from the lab you built |
 
 ## How to use it
