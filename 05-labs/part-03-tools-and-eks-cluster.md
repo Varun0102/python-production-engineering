@@ -8,15 +8,14 @@ Our workstation is ready. Now we install the tools we need and create the Amazon
 | Git | Moves our code to and from GitHub |
 | kubectl | Talks to the EKS cluster |
 | eksctl | Creates the EKS cluster |
-| tmux | Keeps long commands running if your SSH connection drops |
 
 Run everything in this part on the EC2 workstation.
 
 ## Step 1: Install the tools
 
 ```bash
-# Docker, Git and tmux
-sudo dnf install -y docker git tmux
+# Docker and Git
+sudo dnf install -y docker git
 sudo systemctl enable --now docker
 sudo usermod -aG docker ec2-user
 
@@ -105,22 +104,26 @@ Concept: what are we asking for?
 
 The same file, with placeholders, is in 04-code/eks/cluster.yaml.
 
-## Step 5: Create the cluster inside tmux
+## Step 5: Create the cluster in the background
 
 ```bash
-tmux new -s eks
-eksctl create cluster -f cluster.yaml
+nohup eksctl create cluster -f cluster.yaml > eks-create.log 2>&1 &
+tail -f eks-create.log
 ```
 
-This takes 15 to 20 minutes. eksctl creates CloudFormation stacks: first the control plane, then the node group.
+This takes 15 to 20 minutes. eksctl creates CloudFormation stacks: first the control plane, then the node group. Press Ctrl+C to stop watching the log. That does not stop eksctl.
 
-tmux controls:
-
-| Action | Keys or command |
+| Part of the command | What it does |
 |---|---|
-| Leave it running in the background | Ctrl+b, then d |
-| Come back to it | tmux attach -t eks |
-| After an SSH disconnect | reconnect, then tmux attach -t eks |
+| nohup ... & | Runs eksctl in the background, and keeps it running even if your SSH session closes |
+| > eks-create.log 2>&1 | Sends all output, including errors, to a log file |
+| tail -f eks-create.log | Shows the log live. If you reconnect later, run it again |
+
+Question: why not just run eksctl in the terminal?
+
+If your SSH connection drops halfway, eksctl stops. AWS may finish the control plane, but the node group and your kubeconfig are never created. Then kubectl fails with "connection refused" on localhost:8080.
+
+Tip: start the cluster early. Parts 04 to 07 do not need it, so you can build the service while the cluster comes up.
 
 Concept: who can use this cluster? eksctl runs with the workstation IAM role, so that role becomes the cluster admin. eksctl also writes the kubeconfig file for you, so kubectl works straight away.
 
@@ -139,7 +142,9 @@ kubectl version
 
 Expected: 2 nodes with STATUS Ready.
 
-Concept: kubectl and the cluster should be within one minor version of each other. If kubectl version shows a client much newer than the server, install a kubectl that matches the server:
+If kubectl says connection refused on localhost:8080, the cluster is not finished or eksctl stopped early. Check the end of eks-create.log.
+
+Concept: kubectl and the cluster should be within one minor version of each other. We installed the newest kubectl, which can be several versions ahead of EKS. Install a kubectl that matches the server:
 
 ```bash
 SERVER=$(kubectl version -o json | grep -o '"gitVersion": *"v[0-9.]*' | tail -1 | grep -o 'v[0-9.]*')
